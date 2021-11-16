@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Aug 25
-Discretized NLP for compressor optimization with Bonmin (no POC reformulation).
+Compressor optimization with direct solver Bonmin 
+(POC reformulation).
 @author: katharinaenin
 
 """
@@ -15,25 +16,25 @@ import re
 import matplotlib.pyplot as plt
 from time import process_time
 import math
-import scipy.io 
+import scipy.io
 import os
 
-# Set folder name, provide like this: 'Example1/'
+# Set folder name, provide like this: 'Example/'
 folder = 'Example_Simple/'
-    
+
 # Constraint on P and on Q
-lbP = 0
-ubP = 100 
-lbQ = -1000
-ubQ = +1000
+lbP = -cas.inf 
+ubP = cas.inf
+lbQ = -cas.inf
+ubQ = cas.inf
 
 # Read Config Parameters in Configs.txt
 config = configparser.ConfigParser()
 config.read(folder + 'Configs.txt')
 
-length_of_pipe = int(config['configs']['LengthPipe']) # universal length for all pipes (in m)
+length_of_pipe = int(config['configs']['LengthPipe']) # here: universal length for all pipes (in m)
 time_in_total = int(config['configs']['TimeInTotal']) # time (in sec)
-Lambda = float(config['configs']['Lambda']) # here: labmda is fix
+Lambda = float(config['configs']['Lambda']) # here: Lambda is fix
 D = int(config['configs']['Diameter']) # in m
 a = int(config['configs']['FluxSpeed']) # in m/s
 a_square = a*a
@@ -118,7 +119,7 @@ def get_end_node_in_network(df):
        if node not in list_df2:
            end_nodes.append(node)
     # remove slack node
-    end_nodes.remove('s') 
+    end_nodes.remove('s')
     
     return end_nodes
 
@@ -170,9 +171,8 @@ def get_starting_edges_in_network(df):
         for i in range(df.shape[0]):
             if list_df1[i] == node:
                 starting_edges.append(df.iloc[i][0])
-                # break, because starting node is only connected to one edge!
                 break 
-    
+                # break, because starting node is only connected to one edge!
     return starting_edges
 
 
@@ -216,8 +216,7 @@ def get_slack_connection_edge(df):
     list_of_outgoing_edges = get_outgoing_edges(df, slack_connection_node)
     for edge in list_of_outgoing_edges:
         if df.iloc[edge,2] == 's':
-            # there is only one
-            return df.iloc[edge,0]
+            return df.iloc[edge,0] # there is only one
         
 
 def get_all_edges_without_slack_edge(df):
@@ -236,7 +235,7 @@ def get_all_edges_without_slack_edge(df):
     return list_of_edges
 
 
-def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
+def gasnetwork_nlp(P_time0, Q_time0, eps, Edgesfile):
     """
     Function for setting up the NLP
     input: P_time0, Q_time0, P_initialnode, Q_lastnode, eps
@@ -244,22 +243,23 @@ def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
     output: nlp, lbw, ubw, lbg, ubg, w0
     """
     n = np.shape(P_time0)[1]
-    print("This is the number of space steps: " + str(n))
-    m = np.shape(P_initialnode)[0]
-    print("This is the number of time steps: " + str(n))
+    print("This is number of space steps: " + str(n))
+    m = np.shape(eps)[0]
+    print("This is number of time steps: " + str(m))
     dx = length_of_pipe/n # in (m)
     dt = time_in_total/m  # in (s) 
     
+    # Sanity Checks
     # Is CFL fulfilled?
     if (dt*a_square > dx):
         raise Exception("CFL is not fulfilled.")
-    # Are dimensions uniformy?
+    # Dimensions are uniformy?
     if (np.shape(P_time0) != np.shape(Q_time0)):
         raise Exception("Mismatch of dimension of Q_time0, P_time0.")
     
     df = pd.read_csv(Edgesfile, header = None)
-    df = df.iloc[1:, :] # drop first row, which is the header
-    df = df.reset_index(drop=True)
+    df = df.iloc[1:, :]
+    df = df.reset_index(drop = True)
     df_to_int(df)
     number_of_edges = df.shape[0]
     number_of_edges_without_slack_edge = number_of_edges - 1
@@ -277,7 +277,7 @@ def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
     g, lbg, ubg = [], [], []  
     
     # Parameters we are looking for
-    P, Q, u, beta = [], [], [], []
+    P, Q, u = [], [], []
     # alpha does not need vector initialization
     
     # Vector provided information, whether value should be discrete or not
@@ -285,6 +285,14 @@ def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
     
     ################################
     ### Set initial conditions #####
+    # alpha
+    alpha = cas.MX.sym('alpha', m, number_of_configs)
+    w += [cas.reshape(alpha, -1, 1)]
+    w0 += [.5] * m * number_of_configs
+    lbw += [0.] * m * number_of_configs
+    ubw += [1.] * m * number_of_configs 
+    discrete += [True] * m * number_of_configs 
+    
     # u
     u = cas.MX.sym('u', m, number_of_compressors)
     w += [cas.reshape(u, -1, 1)]
@@ -292,14 +300,6 @@ def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
     lbw += [0.] * m * number_of_compressors
     ubw += [+cas.inf] * m * number_of_compressors
     discrete += [False] * m * number_of_compressors 
-    
-    # is compressor on or off
-    beta = cas.MX.sym('beta', m, number_of_compressors)
-    w += [cas.reshape(beta, -1, 1)]
-    w0 += [.5] * m * number_of_compressors
-    lbw += [0.] * m * number_of_compressors
-    ubw += [1.] * m * number_of_compressors 
-    discrete += [True] * m * number_of_compressors 
     
     # P, Q 
     for edge in range(number_of_edges_without_slack_edge):
@@ -398,7 +398,7 @@ def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
 
         for edge_in in ingoing_edges:
             for edge_out in outgoing_edges:
-            # Only for edges which are last edge (thus slack edge)
+            # For number_of_edges_without_slack_edge there is no P,Q
                 if edge_out != number_of_edges_without_slack_edge:
                     g += [(P[edge_in][n-1,:] - P[edge_out][0,:]).reshape((-1,1))]
                     lbg += [0.] * m
@@ -409,23 +409,30 @@ def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
     #### Condition 3 ###
     # Properties at compressor station
     
+    # SOS1 constraint
+    g += [cas.mtimes(alpha, cas.DM.ones(number_of_configs))]
+    lbg += [1.] * (m)
+    ubg += [1.] * (m)
+    
     # list containing all compressor configurations
+    c = [list(i) for i in itertools.product([0, 1], repeat = number_of_compressors)]
+    
     for j, com in enumerate(list_of_compressors):
         ingoing_edge = get_ingoing_edges(df, com) 
         outgoing_edge = get_outgoing_edges(df, com)
 
         # In our model there is one ingoing and one outgoing edge for every compressors
-        # Angst vor zwei unterschiedlichen zusammenlaufenden Drücken?
         if len(ingoing_edge) == 1 and len(outgoing_edge) == 1: 
             ingoing_edge = ingoing_edge[0]
             outgoing_edge = outgoing_edge[0]
 
+            sum_com = sum(c[s][j]*alpha[:,s]*u[:,j] for s in range(number_of_configs))
             # no pressure increase condition
-            g += [u[:,j]*beta[:,j] - u[:,j]] 
+            g += [u[:,j] - sum_com]
             lbg += [0.] * m
             ubg += [0.] * m
-
-            g += [(P[outgoing_edge][0,:] - P[ingoing_edge][n-1,:] - (u[:,j]).reshape((1,-1))).reshape((-1,1))]
+    
+            g += [(P[outgoing_edge][0,:] - P[ingoing_edge][n-1,:] - u[:,j].reshape((1,-1))).reshape((-1,1))]
             lbg += [0.] * m
             ubg += [0.] * m
             
@@ -441,11 +448,10 @@ def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
     # (!) Assumption: we assume that there is only one further outgoing edge besides
     # the slack connection edge
     for j in list_outgoing_edges:
-        if j != number_of_edges_without_slack_edge: # not the last edge    
-            filtered_slack_connection_node_out_edges = j 
+        if j != number_of_edges_without_slack_edge: # not sink "edge"   
+            filtered_slack_connection_node_out_edges = j
 
     print("What is slack connection node: " + str(filtered_slack_connection_node_out_edges))
-    
     sum_of_Q = sum(Q[edge][n-1,:] for edge in list_ingoing_edges)
     
     g += [(sum_of_Q - Q[filtered_slack_connection_node_out_edges][0,:] - eps[:].reshape((1,-1))).reshape((-1,1))]
@@ -455,9 +461,8 @@ def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
     
     ###########################
     #### Objective function ###
-    
     J = 0.5 * sum(u[t,j]**2 for t in range(m) for j in range(number_of_compressors))
-    print("Objective function is set.")
+    print("Objective function set.")
     
     # Create NLP dictionary
     parameters = [m, n, number_of_compressors, number_of_configs, number_of_edges_without_slack_edge, starting_edges, end_edge]
@@ -473,14 +478,14 @@ def extract_solution(sol, parameters):
     """
     Function for setting up the NLP
     input: sol, parameters
-    output: beta, u, P, Q
+    output: alpha, u, P, Q
     """
     m, n, number_of_compressors, number_of_configs, number_of_edges, starting_edges, end_edge = parameters
     offset = 0
+    alpha = np.array(cas.reshape(sol['x'][offset:offset + m * number_of_configs],
+        m, number_of_configs))
+    offset += m * number_of_configs
     u = np.array(cas.reshape(sol['x'][offset:offset + number_of_compressors * m],
-        m, number_of_compressors))
-    offset += number_of_compressors * m
-    beta = np.array(cas.reshape(sol['x'][offset:offset + number_of_compressors * m],
         m, number_of_compressors))
     offset += number_of_compressors * m
     P, Q = [], []
@@ -490,64 +495,77 @@ def extract_solution(sol, parameters):
         Q += [np.array(cas.reshape(sol['x'][offset:offset + m * n], n, m))]
         offset += m * n
     
-    return beta, u, P, Q
+    return alpha, u, P, Q
 
-def plot_solution(beta, u, P, Q, parameters, final_directory):
+def plot_solution(alpha, u, P, Q, parameters, final_directory):
     """
     Function for plotting the solution 
     input: alpha, u, P, Q
     """
     m, n, number_of_compressors, number_of_configs, number_of_edges, starting_edges, end_edge = parameters
     t = np.arange(0,m)
-    
-    # plot beta
-    plt.figure(1).clear()
-    fig, axes  = plt.subplots(number_of_compressors, 1, num=2)
-    axes = axes.reshape((-1,)) if number_of_compressors > 1 else [axes]
-    for i in range(number_of_compressors):
-        axes[i].step(t, beta[:,i])
-        axes[i].set_xlabel(r'time step $t$')
-        axes[i].set_ylabel(r'Compressor {}: on/off'.format(i))
-    plt.savefig(final_directory + 'bonmin_control_beta.png')
+
+    c = [list(i) for i in itertools.product([0, 1], repeat = number_of_compressors)]
     
     # plot u
-    plt.figure(2).clear()
-    fig, axes  = plt.subplots(number_of_compressors, 1, num=2)
+    plt.figure(1).clear()
+    fig, axes  = plt.subplots(number_of_compressors, 1, num=1)
     axes = axes.reshape((-1,)) if number_of_compressors > 1 else [axes]
     for i in range(number_of_compressors):
         axes[i].step(t, u[:,i])
         axes[i].set_xlabel(r'time step $t$')
         axes[i].set_ylabel(r'control $u_{}$'.format(i))
-    plt.savefig(final_directory + 'bonmin_control_u.png')
+    plt.savefig(final_directory + 'BONMINControl_u.png')
+    
+    # plot compressor on/off
+    plt.figure(2).clear()
+    # vector provides which configuration is on for compressors
+    configurations_on = []
+    for time_step in range(m):
+        case = False
+        j = 0
+        while case == False:
+            if alpha[time_step, j] == 1:
+                configurations_on.append(c[j])
+                case = True
+            j = j + 1
+    configurations_on_vec = np.array(configurations_on)       
+    fig, axes  = plt.subplots(number_of_compressors, 1, num=2)
+    axes = axes.reshape((-1,)) if number_of_compressors > 1 else [axes]
+    for i in range(number_of_compressors):
+         axes[i].step(t, configurations_on_vec[:,i])
+         axes[i].set_xlabel(r'time step $t$')
+         axes[i].set_ylabel(r'Compressor {}: on/off'.format(i))
+    plt.savefig(final_directory + 'BONMINConf.png')
     
     # plot inflow at first node
-    plt.figure(4).clear()
-    fig, axes = plt.subplots(num = 4)
+    plt.figure(3).clear()
+    fig, axes = plt.subplots(num = 3)
     axes.plot(t, Q[starting_edges[0]][0,:])
-    axes.set(xlabel = r'time step $t$', ylabel = 'mass flow (kg/s), first node')
-    plt.savefig(final_directory + 'bonmin_flow_firstNode.png')
+    axes.set(xlabel = r'time step $t$', ylabel = 'mass flow (kg/s) at first node')
+    plt.savefig(final_directory + 'BONMINflow_firstNode.png')
     
     # plot pressure at first node
+    plt.figure(4).clear()
+    fig, axes = plt.subplots(num = 4)
+    axes.plot(t, P[starting_edges[0]][0,:])
+    axes.set(xlabel = r'time step $t$', ylabel = 'pressure (bar) at first node')
+    plt.savefig(final_directory + 'BONMINpressure_firstNode.png')
+    
+    # plot flow at last node
     plt.figure(5).clear()
     fig, axes = plt.subplots(num = 5)
-    axes.plot(t, P[starting_edges[0]][0,:])
-    axes.set(xlabel = r'time step $t$', ylabel = 'pressure (bar), first node')
-    plt.savefig(final_directory + 'bonmin_pressure_firstNode.png')
+    axes.plot(t, Q[end_edge][n-1,:])
+    axes.set(xlabel = r'time step $t$', ylabel = 'mass flow (kg/s) at last node')
+    plt.savefig(final_directory + 'BONMINflow_lastNode.png')
     
     # plot pressure at last node
     plt.figure(6).clear()
     fig, axes = plt.subplots(num = 6)
     axes.plot(t, P[end_edge][n-1,:])
-    axes.set(xlabel = r'time step $t$', ylabel = 'pressure (bar), last node')
+    axes.set(xlabel = r'time step $t$', ylabel = 'pressure (bar) at last node')
     axes.set_ylim(59,61)
-    plt.savefig(final_directory + 'bonmin_pressure_lastNode.png')
-    
-    # plot inflow at first node
-    plt.figure(7).clear()
-    fig, axes = plt.subplots(num = 7)
-    axes.plot(t, Q[end_edge][0,:])
-    axes.set(xlabel = r'time step $t$', ylabel = 'mass flow (kg/s), last node')
-    plt.savefig(final_directory + 'bonmin_flow_lastNode.png')
+    plt.savefig(final_directory + 'BONMINpressure_lastNode.png')
     
     
 if __name__ == '__main__':
@@ -555,30 +573,33 @@ if __name__ == '__main__':
      Q_time0 = np.loadtxt(folder + 'Q_time0.dat')
      Edgesfile = folder + 'Edges.txt'
      
-     # Which eps file
+     # Determine which eps file is taken
      if folder == 'Example_Advanced/':
          eps_file = 'eps_file.mat'
          mat_file = scipy.io.loadmat(folder + eps_file)
          eps = mat_file["eps"]
-         eps[0,0] = round(eps[0,0],4) # to make things a little simpler 
+         # to match with initial data
+         eps[0,0] = round(eps[0,0],4)
      elif folder == 'Example_Simple/':
          eps_file = 'eps_file.dat'
-         eps = np.loadtxt(folder + eps_file)
+         eps = np.loadtxt(folder + eps_file)  
 
-     current_directory = os.getcwd()
-     final_directory = os.path.join(current_directory, folder + '/bonmin_noPOC/')
-     if not os.path.exists(final_directory):
-         os.makedirs(final_directory)
      parameters, nlp, lbw, ubw, lbg, ubg, w0, discrete = gasnetwork_nlp(P_time0, Q_time0, eps, Edgesfile)
     
-     # Solving the problem with BONMIN solver    
-     options = {'bonmin': {'time_limit': 1800}, 'discrete': discrete} # 1800 sec = 30 min
+     # Solving optimization problem with BONMIN solver    
+     options = {'bonmin': {'time_limit': 1800}, 'discrete': discrete}  # 1800 sec = 30 min
      t0_start = process_time()
-     solver = cas.nlpsol('nlp_solver', 'bonmin', nlp, options);
+     solver = cas.nlpsol('solver', 'bonmin', nlp, options);
      sol = solver(x0 = w0, lbx = lbw, ubx = ubw, lbg = lbg, ubg = ubg)  
-     beta, u, P, Q = extract_solution(sol, parameters)
+     alpha, u, P, Q = extract_solution(sol, parameters)
      t0_stop = process_time()
      elapsed_time = t0_stop - t0_start
-     print("Time elapsed during execution of bonmin :" + str(elapsed_time))
-     plot_solution(beta, u, P, Q, parameters, final_directory)
+     print("Time elapsed during execution of POC :" + str(elapsed_time))
+     
+     # Plot solution
+     current_directory = os.getcwd()
+     final_directory = os.path.join(current_directory, folder + '/bonmin_POC/')
+     if not os.path.exists(final_directory):
+         os.makedirs(final_directory)
+     plot_solution(alpha, u, P, Q, parameters, final_directory)
      
