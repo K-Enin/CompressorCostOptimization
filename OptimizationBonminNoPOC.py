@@ -8,7 +8,6 @@ Discretized NLP for compressor optimization with Bonmin (no POC reformulation).
 """
 import casadi as cas
 import configparser
-import itertools
 import numpy as np
 import pandas as pd
 import re
@@ -236,7 +235,7 @@ def get_all_edges_without_slack_edge(df):
     return list_of_edges
 
 
-def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
+def gasnetwork_nlp(P_time0, Q_time0, eps, Edgesfile):
     """
     Function for setting up the NLP
     input: P_time0, Q_time0, P_initialnode, Q_lastnode, eps
@@ -245,8 +244,8 @@ def gasnetwork_nlp(P_time0, Q_time0, P_initialnode, Q_lastnode, eps, Edgesfile):
     """
     n = np.shape(P_time0)[1]
     print("This is the number of space steps: " + str(n))
-    m = np.shape(P_initialnode)[0]
-    print("This is the number of time steps: " + str(n))
+    m = np.shape(eps)[0]
+    print("This is the number of time steps: " + str(m))
     dx = length_of_pipe/n # in (m)
     dt = time_in_total/m  # in (s) 
     
@@ -555,12 +554,13 @@ if __name__ == '__main__':
      Q_time0 = np.loadtxt(folder + 'Q_time0.dat')
      Edgesfile = folder + 'Edges.txt'
      
-     # Which eps file
+     # determine which eps file is taken
      if folder == 'Example_Advanced/':
          eps_file = 'eps_file.mat'
          mat_file = scipy.io.loadmat(folder + eps_file)
          eps = mat_file["eps"]
-         eps[0,0] = round(eps[0,0],4) # to make things a little simpler 
+         # to match with initial data
+         eps[0,0] = round(eps[0,0],4)
      elif folder == 'Example_Simple/':
          eps_file = 'eps_file.dat'
          eps = np.loadtxt(folder + eps_file)
