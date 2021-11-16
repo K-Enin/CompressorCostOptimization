@@ -1,0 +1,5 @@
+Edge,In_node,Out_node
+0,0,1
+1,1,c0
+2,c0,2
+3,1,s
