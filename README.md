@@ -4,7 +4,7 @@
 
 In this code we consider different Gas-to-Power networks.
 The aim of this code is to solve an optimization problem, such that all constraints (gas-coupling conditions, Euler Equation, slack & compressor condition) are satisfied and the objective function which is the sum of all pressure differences at the compressor nodes is minimized. \
-Instead of Euler Equation we use Weymouth Equation which provides similar results and is better to control in the terms of the CFL condition. \
+Instead of Euler Equation we use Weymouth Equation which provides similar results and is better to control in terms of the CFL condition. \
 We discretize the Weymouth Equation with Simple Upwind method. 
 
 ## Folders
