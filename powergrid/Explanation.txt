@@ -1,13 +1,13 @@
 In this folder several matlab-scripts are provided for solving the AC power flow equation. 
-We use the power grid given in Paper [1] with the provided parameters. We solve the power-flow equation with matlabs build-in function 'fsolve' making use the of Levenberg-Marquardt Algorithm.
+We use the power grid given in Paper [1] with its provided parameters. We solve the power-flow equation with matlabs build-in function 'fsolve' making use the of Levenberg-Marquardt Algorithm.
 
 In detail, the scripts are responsible for the following processes: 
-In PowerModel.m we provide at slack, generator and load bus as well as the conductance matrix G and susceptance matrix B. As was modeled in [1], the initial conditions remain constant over time except for real and reactive power demand at node N5 which increases in the linearly increases in the interval [m/2,m/2+50] with m being the number of time steps.
-This increase is modeled by 'generate_P_at_N5.m' for the real power and 'generate_Q_at_N5.m' the reactive power.
+In PowerModel.m we provide initial values at slack, generator and load bus as well as the conductance matrix G and susceptance matrix B. As was modeled in [1], the initial conditions remain constant over time except for real and reactive power demand at node N5 which increases linearly in the interval [m/2,m/2+50] with m being the number of time steps.
+This increase is modeled by 'generate_P_at_N5.m' for the real power and 'generate_Q_at_N5.m' for the reactive power.
 In 'RunPowerModel.m' we solve the Power Flow Equations for every time step by calling 'PowerModel.m' m-times. The reactive Power at N1 is then taken and converted to mass flow eps via:
 eps = a_0 + a_1*P + a_2*P^2.
 
 
 
 
-[1] 'Optimal Control of Compressor Stations in a Coupled Gas-to-Power Network', Eike Fokker, Simone Göttlich & Oliver Kolb, 2020
+[1] 'Optimal Control of Compressor Stations in a Coupled Gas-to-Power Network', Eike Fokken, Simone Göttlich & Oliver Kolb, 2020

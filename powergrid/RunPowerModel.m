@@ -50,16 +50,10 @@ xlabel('time steps', 'FontSize',14)
 ylabel('P (per unit)','FontSize',14)
 axis([0 300 0.6 1.8])
 
-fig4 = figure;
-plot(x_b, solution_matrix(2,:),'LineWidth',2.0)
-title('Results after applying fsolve: Reactive Power Q in Node N1', 'FontSize',14)
-xlabel('time steps', 'FontSize',14)
-ylabel('Q (per unit)', 'FontSize',14)
-
 % Transform P into flow eps
-a0 = 0;
-a1 = -0.5;
-a2 = 10;
+a0 = 2;
+a1 = 5;
+a2 = 5;
 
 eps = a0 + a1*solution_matrix(1,:) + a2*solution_matrix(1,:).*solution_matrix(1,:);
 fig5 = figure;

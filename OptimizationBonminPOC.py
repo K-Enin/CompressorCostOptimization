@@ -15,18 +15,27 @@ import pandas as pd
 import re
 import matplotlib.pyplot as plt
 from time import process_time
-import math
 import scipy.io
 import os
 
-# Set folder name, provide like this: 'Example/'
-folder = 'Example_Simple/'
+##############################################
+# USER INPUT: 
+model = 'Simple'
+##############################################
+##############################################
+
+if model == 'Simple':
+    folder = 'Example_Simple/'
+elif model == 'Advanced':
+    folder = 'Example_Advanced/'
+else:
+    raise Exception("This model does not exist: " + model)
 
 # Constraint on P and on Q
-lbP = -cas.inf 
-ubP = cas.inf
-lbQ = -cas.inf
-ubQ = cas.inf
+lbP = 0
+ubP = 100 
+lbQ = -1000
+ubQ = +1000
 
 # Read Config Parameters in Configs.txt
 config = configparser.ConfigParser()
@@ -171,8 +180,8 @@ def get_starting_edges_in_network(df):
         for i in range(df.shape[0]):
             if list_df1[i] == node:
                 starting_edges.append(df.iloc[i][0])
-                break 
                 # break, because starting node is only connected to one edge!
+                break 
     return starting_edges
 
 
@@ -244,7 +253,7 @@ def gasnetwork_nlp(P_time0, Q_time0, eps, Edgesfile):
     """
     n = np.shape(P_time0)[1]
     print("This is number of space steps: " + str(n))
-    m = np.shape(eps)[0]
+    m = 300
     print("This is number of time steps: " + str(m))
     dx = length_of_pipe/n # in (m)
     dt = time_in_total/m  # in (s) 
@@ -280,7 +289,7 @@ def gasnetwork_nlp(P_time0, Q_time0, eps, Edgesfile):
     P, Q, u = [], [], []
     # alpha does not need vector initialization
     
-    # Vector provided information, whether value should be discrete or not
+    # Vector provides information, if value should be discrete or not
     discrete = []
     
     ################################

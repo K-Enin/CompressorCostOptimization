@@ -4,10 +4,12 @@
 Created on Sat Aug 28 16:25:35 2021
 
 @author: katharinaenin
-Example provided in Chapter 3, page 18
+Example included in the Sum Up Rounding Chapter
+Here Standrad Rounding is also considered
 """ 
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 def standard_rounding(alpha):
     N, modes = alpha.shape 
@@ -18,6 +20,7 @@ def standard_rounding(alpha):
         p[i,j] = 1.
     return p
     
+
 def sum_up_rounding(alpha):
     'Sum-Up-Rounding with SOS1 constraint on equidistant grid'
     N, conf = alpha.shape

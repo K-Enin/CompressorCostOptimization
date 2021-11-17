@@ -13,7 +13,7 @@ import scipy.io
 case = "AdvancedModel"
 
 if case == "SimpleModel":
-    folder = 'Example20-Simple/'
+    folder = 'Example_Simple/'
     print("Data generation for a Simple Model.")
     n = 6
     m = 300
@@ -30,6 +30,7 @@ if case == "SimpleModel":
     np.savetxt(folder + 'eps_file.dat', eps)
     np.savetxt(folder + 'P_time0.dat', P_time0)
     np.savetxt(folder + 'Q_time0.dat', Q_time0)
+    
 elif case == "AdvancedModel":
     folder = 'Example_Advanced/'
     print("Data generation for an Advanced Model.")
@@ -59,51 +60,6 @@ elif case == "AdvancedModel":
     Q_time0[4,:] = 250 - eps[0,0]
     Q_time0[5,:] = Q_time0[3,:]
     Q_time0[6,:] = Q_time0[4,:] + Q_time0[5,:]
-    Q_time0[7,:] = Q_time0[6,:]
-    
-    np.savetxt(folder + 'P_time0.dat', P_time0)
-    np.savetxt(folder + 'Q_time0.dat', Q_time0)
-
-elif case == "AdvancedModel2":
-    folder = 'Example_Advanced2/'
-    print("Data generation for an Advanced Model.")
-    n = 6
-    m = 300
-    number_of_edges = 8
-    
-        
-    P_time0 = np.zeros((number_of_edges,n))
-    Q_time0 = np.zeros((number_of_edges,n))
-    
-    # P for time 0 
-    steps = (60 - 50)/(5 * n - 5)
-    init = 60
-    for i in [0,1,2,4,6,7]:
-        for j in range(n):
-            if j != 0:
-                init = init - steps
-            P_time0[i][j] = init
-    P_time0[3,:] = P_time0[2,:]
-    P_time0[5,:] = P_time0[4,:]
-            
-    # Q for time 0               
-    steps_Q = (550 - 450)/(5 * n - 5) #550 - 400 war bisher das beste
-    init_Q = 550
-    for i in [0,1]:
-        for j in range(n):
-            if j != 0:
-                init_Q = init_Q - steps_Q
-            Q_time0[i][j] = init_Q
-            
-    mat_file = scipy.io.loadmat(folder + 'eps_file.mat')
-    eps = mat_file["eps"]
-    eps[0,0] = round(eps[0,0],4) # to simplify summation
-    
-    Q_time0[2,:] = Q_time0[1,n-1]/2 + eps[0,0]
-    Q_time0[3,:] = Q_time0[1,n-1]/2 - eps[0,0]
-    Q_time0[4,:] = Q_time0[2,n-1] - eps[0,0]
-    Q_time0[5,:] = Q_time0[3,n-1]
-    Q_time0[6,:] = (Q_time0[4,:] + Q_time0[5,:])
     Q_time0[7,:] = Q_time0[6,:]
     
     np.savetxt(folder + 'P_time0.dat', P_time0)
