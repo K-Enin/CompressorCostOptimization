@@ -1,22 +1,28 @@
-This folder contains the following Python scripts:
-OptimizationNoPOC.py
+This folder contains the following python scripts:
+Optimization_NLP.py
 OptimizationBonminNoPOC.py
-OptimizationPOC_Upwind_Model.py
-OptimizationBonmin.py
+OptimizationPOC_threeStep.py
+OptimizationBonminPOC.py
 generateInitialData.py
 
-The two optimization scripts 'OptimizationPOC_Upwind_Model.py' and
-'OptimizationBonmin.py' run the compressor cost optimization, which is formulated using partial outer convexification. The two scripts 'OptimizationNoPOC.py' and
-'OptimizationBonminNoPOC.py' (as the name states) do not use this reformulation. Additionally 'OptimizationNoPOC.py' is an NLP Problem.
+The script 'Optimization_threeStep.py' uses the three step approach for compressor cost optimization.
+'OptimizationBonminNoPOC.py' uses the direct solver bonmin to obtain a solution for compressor cost optimization. 
+'OptimizationBonminPOC.py'uses again bonmin, but the optimization problem is reformulated using partial outer convexification.
+Additionally 'Optimization_NLP.py' is an NLP Problem which was used for testing purposes.
 The last script 'generateInitialData.py' was used to generate initial data for our examples.
 
 How to run model: 
-In this folder several Example-folders can be found. Each example folder contains the following files: eps_file.dat, P_time0.dat, Q_time0.dat, Edges.txt, Configs.txt and an illustration of the network. 
-- eps_file.dat contains a 1xm vector of the mass flux taken out of the gas network to the slack bus for power conversion. It set beforehand or calculated using the scripts in power grid. 
-- P_time0.dat and Q_time0.dat contains all pressure and flux values in time t=0 for every pipe section in every pipe (except the pipe which is connected to the slack bus, since its simulation is not important for the following gas pipe simulation).  
+In this folder several Example-folders can be found. Each example folder contains the following files: 
+eps_file.dat, P_time0.dat, Q_time0.dat, Edges.txt, Configs.txt and an illustration of the network. 
+- eps_file.dat contains a 1xm vector of the mass flux taken out of the gas network to the slack bus for power conversion. 
+It set beforehand using generateInitialData.py or calculated using the scripts in power grid. 
+- P_time0.dat and Q_time0.dat contains all pressure and flux values in time t=0 for every pipe section in every pipe 
+(except the pipe which is connected to the slack bus, since its simulation is not important).  
 - Edges.txt contains all the dependencies between nodes. 
 - Configs.txt contains several config parameters which characterize our gas network model.
 
-For each type of Optimization Problem ab image folder is generated in the corresponding Example folder.
+For each type of Optimization Problem an image folder is generated in the corresponding Example folder.
 
-Remark: When solving the optimization problem with IPOPT we use library "ma27", which has to be installed externally and is not initially included in CasAdi. According to CasAdi Google Group library 'ma27' has a better performance for large nlp problems.
+Remark: When solving the optimization problem with IPOPT we use library "ma27", 
+which has to be installed externally and is not initially included in CasAdi. 
+According to CasAdi Google Group library 'ma27' has a better performance for large nlp problems.
